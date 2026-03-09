@@ -602,12 +602,44 @@ class RemoteController implements vscode.Disposable {
         ]);
 
         this.relay.updateState({
-            messages,
+            messages: this.withWorkCardChatFallback(messages, workCards),
             changedFiles,
             workCards,
         });
 
         await this.runAutoApprovePass(messages, workCards);
+    }
+
+    private withWorkCardChatFallback(messages: RemoteMessage[], workCards: RemoteWorkCard[]): RemoteMessage[] {
+        const hasAssistant = messages.some((msg) => msg.role === 'assistant' && msg.text.trim().length > 8);
+        if (hasAssistant) {
+            return messages;
+        }
+
+        const synthesized: RemoteMessage[] = [];
+        const seen = new Set<string>();
+        for (const card of workCards) {
+            const candidates = [card.summary, ...(card.updates || [])]
+                .map((item) => this.cleanLogText(String(item || '')))
+                .filter((item) => item.length > 24);
+            for (const text of candidates) {
+                const key = `assistant:${text}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                synthesized.push({
+                    role: 'assistant',
+                    text: text.slice(0, 8000),
+                    at: card.updatedAt,
+                });
+            }
+        }
+
+        if (synthesized.length > 0) {
+            this.relay?.addActivity(`Using work-card fallback for assistant transcript (${synthesized.length} item(s))`, 'warn');
+            return this.mergeConversationSources(messages, synthesized);
+        }
+
+        return messages;
     }
 
     private async runAutoApprovePass(messages: RemoteMessage[], workCards: RemoteWorkCard[]): Promise<void> {
