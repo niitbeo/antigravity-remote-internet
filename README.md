@@ -68,9 +68,9 @@ Sau đó cài file `.vsix` được tạo vào Antigravity/VS Code.
 
 ## Tải VSIX
 
-- Bản mới nhất: `antigravity-remote-mvp-0.0.36.vsix`
+- Bản mới nhất: `antigravity-remote-mvp-0.0.37.vsix`
 - Link tải trực tiếp:
-  `https://github.com/niitbeo/antigravity-remote-internet/raw/main/antigravity-remote-mvp-0.0.36.vsix`
+  `https://github.com/niitbeo/antigravity-remote-internet/raw/main/antigravity-remote-mvp-0.0.37.vsix`
 
 ## Bảo mật
 

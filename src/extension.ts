@@ -324,7 +324,7 @@ class RemoteController implements vscode.Disposable {
 
     private async sendPromptCompat(text: string, model?: string): Promise<void> {
         const preferredModel = (model ?? this.selectedModel).trim();
-        if (preferredModel && this.currentActiveSessionId && this.sdk.ls.isReady) {
+        if (this.currentActiveSessionId && this.sdk.ls.isReady) {
             const parsed = this.parseModelValue(preferredModel);
             try {
                 await this.sdk.ls.sendMessage({
@@ -332,8 +332,10 @@ class RemoteController implements vscode.Disposable {
                     text,
                     ...(parsed !== undefined ? { model: parsed } : {}),
                 });
-                this.selectedModel = preferredModel;
-                this.relay?.updateState({ selectedModel: preferredModel });
+                if (preferredModel) {
+                    this.selectedModel = preferredModel;
+                    this.relay?.updateState({ selectedModel: preferredModel });
+                }
                 return;
             } catch (error) {
                 this.output.appendLine(`ls.sendMessage with model failed, fallback to cascade.sendPrompt: ${String(error)}`);
