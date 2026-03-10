@@ -14,9 +14,7 @@ Tác giả: Nguyễn Lê Trường
   - Bật/tắt auto-accept step và terminal
 - Stream realtime: tin nhắn, file thay đổi, activity log
 - Pairing bằng URL có token + QR
-- Hỗ trợ 2 chế độ:
-  - LAN (cùng mạng)
-  - Internet qua HTTPS public (Tailscale Funnel / Cloudflare Tunnel)
+- Chế độ Internet chuẩn: **Tailscale Funnel (HTTPS ổn định)**
 
 ## Lệnh
 
@@ -31,60 +29,45 @@ Tác giả: Nguyễn Lê Trường
 - `antigravityRemote.host` (mặc định: `0.0.0.0`)
 - `antigravityRemote.port` (mặc định: `4317`)
 - `antigravityRemote.autoStart` (mặc định: `true`)
-- `antigravityRemote.publicBaseUrl` (mặc định rỗng)
+- `antigravityRemote.publicBaseUrl` (URL HTTPS public từ Tailscale Funnel)
 
-## Khởi động nhanh (LAN)
+## Cài nhanh Internet (Tailscale-only)
 
-1. Cài VSIX
-2. Chạy lệnh `Antigravity Remote: Start Relay`
-3. Chạy `Show Pairing QR` hoặc `Show Connect Info`
-4. Mở link trên điện thoại cùng Wi-Fi
+### Cách 1: 1-click bằng file BAT
 
-## Chế độ Internet (HTTPS)
+Chạy file:
 
-Dùng khi thiết bị điều khiển và máy host ở 2 mạng khác nhau.
+`scripts\\auto-tailscale.bat`
 
-### Khuyến nghị: Tailscale Funnel (URL ổn định)
+File này sẽ:
+1. Cài Tailscale (nếu chưa có)
+2. Đăng nhập Tailscale (nếu chưa login)
+3. Bật Funnel port `4317`
+4. Tự ghi `antigravityRemote.publicBaseUrl` vào settings của:
+   - Antigravity
+   - Cursor
+   - VS Code
 
-1. Cài Tailscale và đăng nhập
-2. Chạy:
-
-```powershell
-"C:\Program Files\Tailscale\tailscale.exe" funnel --bg 4317
-"C:\Program Files\Tailscale\tailscale.exe" serve status --json
-```
-
-3. Lấy domain HTTPS trong output, ví dụ:
-
-`https://desktop-acj3j98.taildbe444.ts.net`
-
-4. Set vào settings:
-
-```json
-"antigravityRemote.publicBaseUrl": "https://desktop-acj3j98.taildbe444.ts.net"
-```
-
-5. Restart relay:
-- `Stop Relay`
-- `Start Relay`
-
-6. Chạy `Show Pairing QR` hoặc `Show Connect Info`, dùng link HTTPS có token.
-
-### Phương án khác: Cloudflare Tunnel (nhanh nhưng URL dễ đổi)
-
-1. Cài `cloudflared`
-2. Chạy script helper:
+### Cách 2: chạy lệnh npm
 
 ```powershell
 npm.cmd run internet:auto
 ```
 
-Script sẽ:
-- mở tunnel
-- lấy `https://...trycloudflare.com`
-- tự cập nhật `antigravityRemote.publicBaseUrl`
+Hoặc chạy script trực tiếp:
 
-Sau đó restart relay.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\auto-tailscale.ps1
+```
+
+## Bật relay sau khi setup
+
+Trong Antigravity:
+1. `Antigravity Remote: Stop Relay`
+2. `Antigravity Remote: Start Relay`
+3. `Show Pairing QR` hoặc `Show Connect Info`
+
+Kết quả đúng: link phải là `https://<host>.<tailnet>.ts.net/?token=...`
 
 ## Build / Đóng gói
 
@@ -94,44 +77,36 @@ npm run build
 npm run package
 ```
 
-Phiên bản VSIX mới nhất hiện tại:
+VSIX hiện tại:
 
-- `antigravity-remote-mvp-0.0.43.vsix`
+- `antigravity-remote-mvp-0.0.44.vsix`
 
 ## Cài VSIX
 
-Trong Antigravity/VS Code:
-
 1. Mở Extensions
 2. `...` -> `Install from VSIX...`
-3. Chọn `antigravity-remote-mvp-0.0.43.vsix`
+3. Chọn file `.vsix`
 4. Reload window
 
-## Ghi chú về model
+## Ghi chú model
 
-Khi chọn model trong dashboard, extension gửi model đó qua LS API để thực thi.
-Trên một số bản Antigravity, badge model nhỏ trong IDE có thể chưa đổi ngay dù model thực thi đã đổi đúng.
+Model được áp dụng qua LS API theo lựa chọn trên dashboard.
+Một số bản IDE có thể chưa đổi badge model tức thì dù model thực thi đã đổi đúng.
 
 ## Bảo mật
 
 - Không chia sẻ công khai link token đầy đủ
-- Bật lớp bảo vệ ở tầng tunnel (ACL/Access)
-- Có thể reset token bất kỳ lúc nào bằng `Reset Pairing Token`
+- Dùng ACL trong Tailscale admin để giới hạn truy cập
+- Có thể reset token bằng `Reset Pairing Token`
 
-## Xử lý lỗi thường gặp
+## Lỗi thường gặp
 
-### QR vẫn ra link LAN
+### QR vẫn ra LAN
 
-- Kiểm tra `antigravityRemote.publicBaseUrl` đã set đúng profile settings đang dùng (Antigravity/Cursor/Code)
+- Kiểm tra `antigravityRemote.publicBaseUrl` trong profile settings đang dùng
 - Đổi settings xong phải restart relay
-- Đóng QR panel cũ rồi mở lại (panel cũ giữ URL cũ)
-
-### Cloudflare lỗi 1033 / 530
-
-- Tunnel hết hạn hoặc rớt
-- Chạy lại `npm.cmd run internet:auto`
-- Nên dùng Tailscale Funnel cho URL ổn định lâu dài
+- Đóng panel QR cũ rồi mở lại
 
 ### F5 xong config bị reset
 
-Các bản mới đã lưu model/planner/auto-accept trong localStorage và tự sync lại sau khi reconnect.
+Bản mới đã lưu model/planner/auto-accept trong localStorage và tự sync lại khi reconnect.
