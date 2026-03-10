@@ -1,23 +1,24 @@
 # Antigravity Remote Extension
 
-Tiện ích điều khiển Antigravity từ xa qua mạng LAN.
+Remote dashboard for Antigravity/VS Code so you can send prompts and control approvals from phone or another device.
 
-Tác giả: Nguyễn Lê Trường
+Author: Nguyen Le Truong
 
-## Tính năng
+## What it does
 
-- Chạy relay server nội bộ (`HTTP + WebSocket`) trong extension host
-- Dashboard web tren mobile de:
-  - Gửi prompt
-  - Accept/reject agent step
-  - Accept/reject terminal command
-  - Chuyển session đang hoạt động
-- Giám sát session realtime qua `antigravity-sdk`
-- Pair bằng URL token + lệnh hiển thị QR
-- Chỉ báo trạng thái trên status bar (`AG Remote: on/off/error`)
-- Giữ nguyên chế độ LAN và hỗ trợ chế độ Internet qua URL public HTTPS
+- Runs local relay server inside extension host (`HTTP + WebSocket`)
+- Web dashboard for remote control:
+  - Send prompt
+  - Switch session
+  - Stop current run
+  - Toggle auto-accept step/terminal
+- Realtime stream (messages, changed files, activity)
+- Pairing by tokenized URL + QR
+- Supports both:
+  - LAN mode
+  - Internet mode via HTTPS public URL (Tailscale Funnel / Cloudflare Tunnel)
 
-## Lệnh
+## Commands
 
 - `Antigravity Remote: Start Relay`
 - `Antigravity Remote: Stop Relay`
@@ -25,61 +26,112 @@ Tác giả: Nguyễn Lê Trường
 - `Antigravity Remote: Show Pairing QR`
 - `Antigravity Remote: Reset Pairing Token`
 
-## Cài đặt
+## Settings
 
-- `antigravityRemote.host` (mặc định `0.0.0.0`)
-- `antigravityRemote.port` (mặc định `4317`)
-- `antigravityRemote.autoStart` (mặc định `true`)
-- `antigravityRemote.publicBaseUrl` (mặc định rỗng, dùng cho Internet mode)
+- `antigravityRemote.host` (default: `0.0.0.0`)
+- `antigravityRemote.port` (default: `4317`)
+- `antigravityRemote.autoStart` (default: `true`)
+- `antigravityRemote.publicBaseUrl` (default: empty)
 
-## Chế độ Internet (giữ sườn LAN)
+## Quick Start (LAN)
 
-1. Chạy relay bình thường trên máy chính.
-2. Dùng Tailscale Funnel hoặc Cloudflare Tunnel để có URL HTTPS public.
-3. Điền URL đó vào `antigravityRemote.publicBaseUrl`.
-4. Chạy `Antigravity Remote: Start Relay`.
-5. Mở `Show Connect Info` để copy link Internet đã gắn token.
+1. Install VSIX
+2. Run command: `Antigravity Remote: Start Relay`
+3. Run: `Show Pairing QR` or `Show Connect Info`
+4. Open URL on phone in same Wi-Fi
 
-Lưu ý:
-- LAN vẫn hoạt động song song như cũ.
-- Nên bật lớp bảo mật ngoài (Tailscale ACL / Cloudflare Access).
+## Internet Mode (HTTPS)
 
-## Phát triển
+Use this when device and host are in different networks.
 
-```bash
-npm install
-npm run build
+### Recommended: Tailscale Funnel (stable URL)
+
+1. Install Tailscale and login
+2. Run:
+
+```powershell
+"C:\Program Files\Tailscale\tailscale.exe" funnel --bg 4317
+"C:\Program Files\Tailscale\tailscale.exe" serve status --json
 ```
 
-Chạy extension trong Extension Development Host:
+3. Copy HTTPS domain from output, for example:
 
-1. Mở thư mục này bằng Antigravity/VS Code
-2. Nhấn `F5` (dùng `.vscode/launch.json`)
-3. Trong host window, chạy `Antigravity Remote: Start Relay`
-4. Chạy `Antigravity Remote: Show Pairing QR` hoặc `Show Connect Info`
+`https://desktop-acj3j98.taildbe444.ts.net`
 
-## Đóng gói VSIX
+4. Set:
 
-```bash
+```json
+"antigravityRemote.publicBaseUrl": "https://desktop-acj3j98.taildbe444.ts.net"
+```
+
+5. Restart relay:
+- `Stop Relay`
+- `Start Relay`
+
+6. Run `Show Pairing QR` or `Show Connect Info` and use the HTTPS link with token.
+
+### Alternative: Cloudflare Tunnel (quick but URL may rotate)
+
+1. Install `cloudflared`
+2. Run helper script:
+
+```powershell
+npm.cmd run internet:auto
+```
+
+This script will:
+- start tunnel
+- detect `https://...trycloudflare.com`
+- update `antigravityRemote.publicBaseUrl`
+
+Then restart relay.
+
+## Build / Package
+
+```powershell
+npm install
+npm run build
 npm run package
 ```
 
-Sau đó cài file `.vsix` được tạo vào Antigravity/VS Code.
+Latest packaged file in this repo workflow:
 
-## Tải VSIX
+- `antigravity-remote-mvp-0.0.43.vsix`
 
-- Bản mới nhất: `antigravity-remote-mvp-0.0.37.vsix`
-- Link tải trực tiếp:
-  `https://github.com/niitbeo/antigravity-remote-internet/raw/main/antigravity-remote-mvp-0.0.37.vsix`
+## Install VSIX
 
-## Bảo mật
+In Antigravity/VS Code:
 
-- Relay định hướng LAN và được gate bằng token
-- Có thể reset token bất kỳ lúc nào bằng lệnh `Reset Pairing Token`
-- Chỉ dùng trong mạng Wi-Fi tin cậy
+1. Open Extensions panel
+2. `...` menu -> `Install from VSIX...`
+3. Choose `antigravity-remote-mvp-0.0.43.vsix`
+4. Reload window
 
-## Giới hạn hiện tại
+## Notes about model display
 
-- Chưa có push notification
-- Chưa có queued approval inbox UI
-- Chưa có audit history lưu lâu dài
+When selecting model from remote web config, execution model is applied through LS API.
+On some Antigravity builds, the small model label in IDE panel may not update immediately even though execution model is already changed.
+
+## Security
+
+- Never share full token URL publicly
+- Use ACL/Access policy on your tunnel layer
+- Reset token any time with `Reset Pairing Token`
+
+## Troubleshooting
+
+### QR still shows LAN URL
+
+- Ensure `antigravityRemote.publicBaseUrl` is set in the correct app settings profile (Antigravity/Cursor/Code)
+- Restart relay after changing settings
+- Re-open QR panel (old panel keeps old URL)
+
+### Cloudflare error 1033 / 530
+
+- Tunnel expired or disconnected
+- Re-run `npm.cmd run internet:auto`
+- Prefer Tailscale Funnel for stable production URL
+
+### Remote config resets after F5
+
+Current builds persist remote preferences (model/planner/auto-accept) in browser localStorage and sync them back to server after reconnect.
